@@ -47,6 +47,12 @@ try:
         check_requirements,
         validate_config,
     )
+    try:
+        from plugins.platforms.photon.adapter import (
+            _standalone_send as _upstream_standalone_send,
+        )
+    except ImportError:
+        _upstream_standalone_send = None
 except ImportError:
     try:
         # Fallback: some installs expose it under the gateway package.
@@ -55,6 +61,12 @@ except ImportError:
             check_requirements,
             validate_config,
         )
+        try:
+            from gateway.plugins.platforms.photon.adapter import (  # type: ignore
+                _standalone_send as _upstream_standalone_send,
+            )
+        except ImportError:
+            _upstream_standalone_send = None
     except ImportError as exc:
         raise ImportError(
             "photon-plus requires the upstream photon plugin "
@@ -233,7 +245,7 @@ def _env_enablement() -> Optional[dict]:
 
 def register(ctx) -> None:
     """Called by the Hermes plugin loader at startup."""
-    ctx.register_platform(
+    kwargs: Dict[str, Any] = dict(
         name="photon-plus",
         label="iMessage via Photon Plus",
         adapter_factory=lambda cfg: PhotonPlusAdapter(cfg),
@@ -259,3 +271,8 @@ def register(ctx) -> None:
             "them unless asked."
         ),
     )
+    # Standalone sends (hermes send, cron without a live session) go
+    # straight to the sidecar over HTTP — reuse upstream's implementation.
+    if _upstream_standalone_send is not None:
+        kwargs["standalone_sender_fn"] = _upstream_standalone_send
+    ctx.register_platform(**kwargs)
