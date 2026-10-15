@@ -181,6 +181,18 @@ class PhotonPlusAdapter(PhotonAdapter):
     # truncating at MAX_PLATFORM_OUTPUT with a footer.
     splits_long_messages = True
 
+    def __init__(self, config):
+        # Upstream hardcodes Platform("photon"); re-point at our platform so
+        # inbound attribution, allowlist checks, and session routing all say
+        # photon-plus. Without this, events arrive as "photon" and die as
+        # unauthorized against the disabled platform's config.
+        super().__init__(config)
+        try:
+            from gateway.config import Platform
+        except ImportError:
+            from hermes_cli.plugins import Platform  # type: ignore
+        self.platform = Platform("photon-plus")
+
     async def send(
         self,
         chat_id: str,
