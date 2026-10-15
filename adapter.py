@@ -208,11 +208,27 @@ class PhotonPlusAdapter(PhotonAdapter):
 
 
 def _env_enablement() -> Optional[dict]:
-    home = os.getenv("PHOTON_PLUS_HOME_CHANNEL") or os.getenv("PHOTON_HOME_CHANNEL") or ""
-    extra: Dict[str, Any] = {}
+    """Seed PlatformConfig.extra from env (mirrors upstream's shape).
+
+    The special ``home_channel`` key is handled by the core plugin hook
+    and becomes a proper ``HomeChannel`` on ``PlatformConfig``.
+    """
+    project_id = os.getenv("PHOTON_PROJECT_ID", "").strip()
+    project_secret = os.getenv("PHOTON_PROJECT_SECRET", "").strip()
+    if not (project_id and project_secret):
+        return None
+    seed: Dict[str, Any] = {
+        "project_id": project_id,
+        "project_secret": project_secret,
+    }
+    home = (os.getenv("PHOTON_PLUS_HOME_CHANNEL", "").strip()
+            or os.getenv("PHOTON_HOME_CHANNEL", "").strip())
     if home:
-        extra["home_channel"] = home
-    return {"extra": extra} if extra else None
+        seed["home_channel"] = {
+            "chat_id": home,
+            "name": os.getenv("PHOTON_PLUS_HOME_CHANNEL_NAME", "Home"),
+        }
+    return seed
 
 
 def register(ctx) -> None:
