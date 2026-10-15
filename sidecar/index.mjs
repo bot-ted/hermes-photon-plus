@@ -537,6 +537,29 @@ async function normalizeEvent(space, message) {
         );
       } catch {}
     }
+    // photon-plus: swipe-reply linkage lives on the top-level `reply` field,
+    // not inside content. Fold it into the normalized payload as reply-to
+    // context (see normalizeContent text/reply branches for field probing).
+    const rawContent = message.content || {};
+    const normalized = await normalizeContent(rawContent);
+    try {
+      const r = message.reply;
+      if (r && typeof r === "object") {
+        console.error(
+          "[photon-plus-sidecar] reply subkeys=" + Object.keys(r).join(",")
+        );
+        if (normalized && typeof normalized === "object") {
+          if (normalized.targetMessageId == null) {
+            normalized.targetMessageId =
+              r.id ?? r.messageId ?? r.targetMessageId ?? r.target?.id ?? null;
+          }
+          if (normalized.targetText == null) {
+            normalized.targetText =
+              r.text ?? r.body ?? r.quotedText ?? r.target?.text ?? null;
+          }
+        }
+      }
+    } catch {}
     return {
       messageId: message.id ?? null,
       platform: message.platform || space.__platform || "iMessage",
@@ -547,7 +570,7 @@ async function normalizeEvent(space, message) {
         phone: space.phone ?? msgSpace.phone ?? null,
       },
       sender: { id: message.sender ? message.sender.id : null },
-      content: await normalizeContent(message.content),
+      content: normalized,
       timestamp:
         ts instanceof Date ? ts.toISOString() : ts ? String(ts) : null,
     };
