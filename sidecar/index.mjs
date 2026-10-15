@@ -537,6 +537,18 @@ async function normalizeEvent(space, message) {
         );
       } catch {}
     }
+    // photon-plus: per-event trace (temporary) — content type + whether a
+    // top-level reply link is present. Keys only, no values.
+    try {
+      const _c = (message && message.content) || {};
+      const _r = message ? message.reply : null;
+      console.error(
+        "[photon-plus-sidecar] ev type=" +
+          (_c.type || "?") +
+          " hasReply=" +
+          (_r != null && typeof _r === "object" ? "obj" : String(_r == null ? "null" : typeof _r))
+      );
+    } catch {}
     // photon-plus: swipe-reply linkage lives on the top-level `reply` field,
     // not inside content. Fold it into the normalized payload as reply-to
     // context (see normalizeContent text/reply branches for field probing).
