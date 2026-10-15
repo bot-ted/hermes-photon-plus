@@ -32,7 +32,8 @@ from __future__ import annotations
 import copy
 import logging
 import os
-from typing import Any, Dict, List, Optional
+import re
+from typing import Any, Dict, List, Optional, Tuple
 
 logger = logging.getLogger(__name__)
 
@@ -219,6 +220,25 @@ class PhotonPlusAdapter(PhotonAdapter):
         await super()._dispatch_inbound(event)
 
 
+_E164_RE = re.compile(r"\+\d{7,15}")
+
+
+def _parse_target_ref(target_ref: str) -> Optional[Tuple[str, Optional[str]]]:
+    """Plugin target parser: accept bare E.164 and Spectrum space ids.
+
+    Lets `hermes send -t photon-plus:<target>` resolve without a
+    channel-directory entry (core only whitelists the "photon" name).
+    """
+    t = (target_ref or "").strip()
+    if not t:
+        return None
+    if _E164_RE.fullmatch(t):
+        return (t, None)
+    if "any;-;" in t or t.startswith("space:"):
+        return (t, None)
+    return None
+
+
 def _env_enablement() -> Optional[dict]:
     """Seed PlatformConfig.extra from env (mirrors upstream's shape).
 
@@ -271,6 +291,9 @@ def register(ctx) -> None:
             "them unless asked."
         ),
     )
+    # Target parser so `hermes send -t photon-plus:<e164|space-id>` and cron
+    # deliver resolve without channel-directory entries.
+    kwargs["parse_target_ref_fn"] = _parse_target_ref
     # Standalone sends (hermes send, cron without a live session) go
     # straight to the sidecar over HTTP — reuse upstream's implementation.
     if _upstream_standalone_send is not None:
