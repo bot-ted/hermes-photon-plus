@@ -524,6 +524,19 @@ async function normalizeEvent(space, message) {
   try {
     const msgSpace = message.space || {};
     const ts = message.timestamp;
+    // photon-plus: one-time schema probe — log top-level message keys (no
+    // values) so we can see whether reply linkage exists outside content.
+    if (!globalThis.__ppKeysLogged) {
+      globalThis.__ppKeysLogged = true;
+      try {
+        console.error(
+          "[photon-plus-sidecar] msg keys=" +
+            Object.keys(message || {}).join(",") +
+            " content keys=" +
+            Object.keys((message && message.content) || {}).join(",")
+        );
+      } catch {}
+    }
     return {
       messageId: message.id ?? null,
       platform: message.platform || space.__platform || "iMessage",
