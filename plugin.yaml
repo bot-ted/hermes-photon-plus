@@ -1,0 +1,37 @@
+name: photon-plus
+label: iMessage via Photon Plus
+kind: platform
+version: 0.1.0
+description: >
+  Fork of the upstream Photon Spectrum iMessage adapter. Reuses the
+  upstream Node sidecar and auth, adds chunked outbound sends and
+  swipe-reply unwrapping. Tracks upstream via UPSTREAM_PIN.
+author: bot-ted
+requires_env:
+  - name: PHOTON_PROJECT_ID
+    description: "Spectrum project id (same value as upstream photon plugin)"
+    prompt: "Photon Spectrum project id"
+    url: "https://app.photon.codes/"
+    password: false
+  - name: PHOTON_PROJECT_SECRET
+    description: "Project secret paired with the Spectrum project id"
+    prompt: "Photon project secret"
+    url: "https://app.photon.codes/"
+    password: true
+optional_env:
+  - name: PHOTON_PLUS_HOME_CHANNEL
+    description: "Default target for cron delivery (Spectrum space id, DM GUID, or E.164). Falls back to PHOTON_HOME_CHANNEL."
+    prompt: "Home channel"
+    password: false
+  - name: PHOTON_SIDECAR_PORT
+    description: "Loopback port for the Node sidecar (default 8789, shared with upstream)"
+    prompt: "Sidecar port"
+    password: false
+  - name: PHOTON_ALLOWED_USERS
+    description: "Comma-separated E.164 phone numbers allowed to talk to the bot"
+    prompt: "Allowed users"
+    password: false
+  - name: PHOTON_ALLOW_ALL_USERS
+    description: "Allow any sender (dev only)"
+    prompt: "Allow all users?"
+    password: false

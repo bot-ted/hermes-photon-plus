@@ -1,0 +1,6 @@
+UPSTREAM_REPO=https://github.com/NousResearch/hermes-agent
+UPSTREAM_COMMIT=20b03d9aeeb0622f5a7e1bcfae05989dcc16aa03
+UPSTREAM_DATE=2026-06-28
+TRACKED_FILE=plugins/platforms/photon/adapter.py
+BASE_CLASS=PhotonAdapter
+NOTE=photon-plus subclasses PhotonAdapter and overrides send + _dispatch_inbound only. Re-validate on bump with: hermes plugins doctor photon-plus
