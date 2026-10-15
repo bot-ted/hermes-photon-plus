@@ -1,6 +1,7 @@
 UPSTREAM_REPO=https://github.com/NousResearch/hermes-agent
 UPSTREAM_COMMIT=20b03d9aeeb0622f5a7e1bcfae05989dcc16aa03
 UPSTREAM_DATE=2026-06-28
-TRACKED_FILE=plugins/platforms/photon/adapter.py
+TRACKED_FILES=plugins/platforms/photon/adapter.py, plugins/platforms/photon/sidecar/index.mjs
 BASE_CLASS=PhotonAdapter
 NOTE=photon-plus subclasses PhotonAdapter and overrides send + _dispatch_inbound only. Re-validate on bump with: hermes plugins doctor photon-plus
+SIDECAR_NOTE=sidecar/ is vendored from the INSTALLED upstream copy (/opt/hermes/plugins/platforms/photon/sidecar, sidecar pkg 0.4.0) plus the photon-plus reply branch in normalizeContent. Diff ours vs upstream with: diff /opt/hermes/plugins/platforms/photon/sidecar/index.mjs sidecar/index.mjs. Selected at runtime via PHOTON_SIDECAR_DIR=/opt/data/plugins/photon-plus/sidecar (supported override in upstream sidecar_paths.py). node_modules is gitignored and auto-installed on connect.
