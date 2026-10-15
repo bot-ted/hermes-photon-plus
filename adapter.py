@@ -33,6 +33,7 @@ import copy
 import logging
 import os
 import re
+from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional, Tuple
 
 logger = logging.getLogger(__name__)
@@ -220,16 +221,86 @@ class PhotonPlusAdapter(PhotonAdapter):
         return result
 
     async def _dispatch_inbound(self, event: Dict[str, Any]) -> None:
+        # photon-plus: text events carrying reply-target fields (populated by
+        # our sidecar) get reply_to context; everything else goes to upstream
+        # untouched. Upstream only forwards reply_to for reactions.
         try:
-            # Work on a copy so unknown shapes still reach upstream intact
-            # for their placeholder path if we fail to normalize.
-            evt = copy.deepcopy(event)
+            content = event.get("content") or {}
+            if content.get("type") == "text" and (
+                content.get("targetMessageId") or content.get("targetText")
+            ):
+                await self._dispatch_text_reply(event)
+                return
+        except AttributeError as exc:
+            # Upstream renamed a helper out from under us — loud, then fall
+            # through so the message still flows (without reply context).
+            logger.error("[photon-plus] reply path needs rebase: %s", exc)
+        except Exception as exc:
+            logger.warning("[photon-plus] reply normalize failed: %s", exc)
+        # Legacy bare-reply shape (sidecar predates our branch): try to make
+        # sense of it, else upstream renders its placeholder.
+        try:
+            import copy as _copy
+
+            evt = _copy.deepcopy(event)
             if _normalize_reply_event(evt):
                 await super()._dispatch_inbound(evt)
                 return
         except Exception as exc:
             logger.warning("[photon-plus] reply normalize failed: %s", exc)
         await super()._dispatch_inbound(event)
+
+    async def _dispatch_text_reply(self, event: Dict[str, Any]) -> None:
+        """Dispatch a text event that quotes another message, with context."""
+        from gateway.platforms.event import MessageEvent, MessageType
+
+        try:
+            from plugins.platforms.photon.adapter import (
+                _parse_timestamp as _parse_ts,
+            )
+        except ImportError:
+            try:
+                from gateway.plugins.platforms.photon.adapter import (  # type: ignore
+                    _parse_timestamp as _parse_ts,
+                )
+            except ImportError:
+                _parse_ts = None  # type: ignore
+
+        space = event.get("space") or {}
+        sender = event.get("sender") or {}
+        content = event.get("content") or {}
+        space_id = space.get("id") or ""
+        chat_type = "group" if space.get("type") == "group" else "dm"
+        sender_id = sender.get("id") or space.get("phone") or space_id
+        self._record_last_inbound(space_id, event.get("messageId"))
+        if chat_type == "group" and self.require_mention:
+            if not self._message_matches_mention_patterns(content.get("text") or ""):
+                return
+        text = content.get("text") or ""
+        if chat_type == "group" and self.require_mention:
+            text = self._clean_mention_text(text)
+        source = self.build_source(
+            chat_id=space_id,
+            chat_name=space_id,
+            chat_type=chat_type,
+            user_id=sender_id,
+            user_name=sender_id or None,
+            message_id=event.get("messageId"),
+        )
+        await self.handle_message(
+            MessageEvent(
+                text=text,
+                message_type=MessageType.TEXT,
+                source=source,
+                message_id=event.get("messageId"),
+                reply_to_message_id=content.get("targetMessageId"),
+                reply_to_text=content.get("targetText"),
+                raw_message=event,
+                timestamp=_parse_ts(event.get("timestamp") or "")
+                if _parse_ts
+                else datetime.now(tz=timezone.utc),
+            )
+        )
 
 
 _E164_RE = re.compile(r"\+\d{7,15}")

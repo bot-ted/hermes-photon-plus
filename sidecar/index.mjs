@@ -439,7 +439,31 @@ async function normalizeContent(content) {
     return { type: "unknown" };
   }
   if (content.type === "text") {
-    return { type: "text", text: content.text || "" };
+    // photon-plus: swipe-reply bodies often arrive as plain text events with
+    // the reply link in sibling fields that this branch used to drop. Keep
+    // the text and probe for the link; log keys once (no values) to confirm
+    // the real schema.
+    const q =
+      (content.quoted && typeof content.quoted === "object" && content.quoted) ||
+      (content.reply && typeof content.reply === "object" && content.reply) ||
+      {};
+    const extraKeys = Object.keys(content).filter((k) => k !== "type" && k !== "text");
+    if (extraKeys.length > 0 || Object.keys(q).length > 0) {
+      console.error(
+        "[photon-plus-sidecar] text+ keys=" +
+          extraKeys.join(",") +
+          " nested=" +
+          Object.keys(q).join(",")
+      );
+    }
+    const target = content.target || q.target || null;
+    const out = { type: "text", text: content.text || "" };
+    const targetId =
+      content.targetMessageId || content.replyToMessageId || target?.id || q.messageId || null;
+    if (targetId) out.targetMessageId = targetId;
+    const targetText = content.targetText || content.quotedText || q.text || q.body || null;
+    if (targetText) out.targetText = targetText;
+    return out;
   }
   if (content.type === "attachment" || content.type === "voice") {
     return await normalizeBinaryContent(content);
