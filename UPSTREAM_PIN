@@ -1,6 +1,8 @@
 UPSTREAM_REPO=https://github.com/NousResearch/hermes-agent
 UPSTREAM_COMMIT=20b03d9aeeb0622f5a7e1bcfae05989dcc16aa03
 UPSTREAM_DATE=2026-06-28
+ADAPTER_BASE=UPSTREAM_COMMIT above (PhotonAdapter subclass, send + _dispatch_inbound only)
+SIDECAR_BASE=live mirror /opt/data/photon/sidecar as of 2026-10-17 (sidecar pkg 12.7.0, spectrum-ts 12.7.0)
 TRACKED_FILES=plugins/platforms/photon/adapter.py, plugins/platforms/photon/sidecar/index.mjs
 BASE_CLASS=PhotonAdapter
 NOTE=photon-plus subclasses PhotonAdapter and overrides send + _dispatch_inbound only. Re-validate on bump with: hermes plugins doctor photon-plus
